@@ -1,0 +1,42 @@
+name: SentinelFlow CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest faker
+
+      - name: Run compliance unit tests
+        run: |
+          pytest tests/test_compliance.py -v --tb=short
+
+      - name: Verify project structure
+        run: |
+          echo "Checking project structure..."
+          test -d data_generator && echo "  [PASS] data_generator exists" || echo "  [FAIL] data_generator missing"
+          test -d databricks && echo "  [PASS] databricks exists" || echo "  [FAIL] databricks missing"
+          test -d databricks/bronze && echo "  [PASS] databricks/bronze exists" || echo "  [FAIL] missing"
+          test -d databricks/silver && echo "  [PASS] databricks/silver exists" || echo "  [FAIL] missing"
+          test -d databricks/gold && echo "  [PASS] databricks/gold exists" || echo "  [FAIL] missing"
+          test -d databricks/ml && echo "  [PASS] databricks/ml exists" || echo "  [FAIL] missing"
+          test -d tests && echo "  [PASS] tests exists" || echo "  [FAIL] tests missing"
+          test -f docker-compose.yml && echo "  [PASS] docker-compose.yml exists" || echo "  [FAIL] missing"
+          echo "Structure check complete"
