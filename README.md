@@ -14,31 +14,50 @@ In 2025, global regulators imposed **$1.23 billion in fines** for AML compliance
 
 ## Architecture
 
-```
-                         SentinelFlow Architecture
-                         ========================
+```mermaid
+flowchart TB
+    subgraph Generation["Data Generation"]
+        A[Python Transaction Generator] -->|ISO 20022 JSON files| B[Unity Catalog Volume]
+    end
+    
+    subgraph Pipeline["Databricks Pipeline"]
+        B -->|Auto Loader| C[Bronze Layer - Raw Delta Table]
+        C -->|Full table read| D[Silver Layer - Enriched Delta Table]
+        D -->|Flagged only| E[Gold Layer - SAR Reports]
+    end
 
-  Transaction          Unity Catalog              Databricks SQL
-  Generator            Volume                     Dashboard
-  (Python)             (Cloud Storage)            (Live BI)
-      |                     |                          ^
-      v                     v                          |
-  [JSON files] ──> [Auto Loader] ──> [Bronze] ──> [Silver] ──> [Gold]
-                   (Streaming)       (Raw)        (Enriched)   (SAR Reports)
-                                       |              |             |
-                                       |         Live APIs:         |
-                                       |         - OFAC API         |
-                                       |         - ECB FX API       |
-                                       |         - FATF Rules       |
-                                       |              |             |
-                                       |         [GNN Model]        |
-                                       |         (MLflow)           |
-                                       |              |             |
-                                       v              v             v
-                                   [Unity Catalog — Full Data Lineage]
-                                              |
-                                   [Databricks Workflow]
-                                   (Automated Daily at 8am)
+    subgraph APIs["Live API Enrichment"]
+        F[OFAC Sanctions API] --> D
+        G[ECB Exchange Rates] --> D
+        H[FATF Travel Rule] --> D
+    end
+
+    subgraph ML["ML Layer"]
+        I[Elliptic Dataset] --> J[GraphSAGE GNN - AUC 0.97]
+        J --> D
+        J -.-> K[MLflow Registry]
+    end
+
+    subgraph Auto["Automation"]
+        L[Databricks Workflow - Daily 8am] --> C
+        L --> J
+        M[Unity Catalog] --> C
+        M --> D
+        M --> E
+    end
+
+    subgraph Output["Output"]
+        E --> N[SQL Dashboard]
+        E --> O[SAR Reports]
+    end
+
+    subgraph CICD["CI/CD"]
+        P[GitHub Actions - 32 Tests]
+    end
+
+    subgraph DQ["Data Quality"]
+        R[23 Automated Checks]
+    end
 ```
 
 ---
